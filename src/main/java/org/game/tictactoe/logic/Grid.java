@@ -12,14 +12,26 @@ import java.util.Stack;
 
 public class Grid {
 
-    private enum Status {
-        X_WINS, O_WINS, DRAW, X_TURN, O_TURN, INVALID
+    enum Status {
+        X_WINS("X Wins"), O_WINS("O Wins"), DRAW("Draw"), X_TURN("X's Turn"),
+        O_TURN("O's Turn"), INVALID("Invalid");
+
+        private final String name;
+
+        Status(String name) {
+            this.name = name;
+        }
+
+        @Override
+        public String toString() {
+            return name;
+        }
     }
 
-    final Cell[][] board;
-    Status status;
-    final Stack<Move> moves;
-    final SimpleStringProperty[][] boardProperty;
+    private final Cell[][] board;
+    private Status status;
+    private final Stack<Move> moves;
+    private final SimpleStringProperty[][] boardProperty;
 
     public Grid() {
         board = new Cell[3][3];
@@ -35,24 +47,16 @@ public class Grid {
         }
     }
 
-    private Grid(Grid grid) {
-        board = new Cell[3][3];
-        status = grid.getStatus();
-        moves = new Stack<>();
-        moves.addAll(grid.moves);
-        boardProperty = new SimpleStringProperty[board.length][board[0].length];
-
+    public void reset() {
+        status = Status.O_TURN;
+        moves.clear();
 
         for (int i = 0; i < 3; i++) {
             for (int j = 0; j < 3; j++) {
-                board[i][j] = grid.get(i, j);
-                boardProperty[i][j] = new SimpleStringProperty(boardProperty[i][j].toString());
+                board[i][j] = Cell.EMPTY;
+                boardProperty[i][j].set(null);
             }
         }
-    }
-
-    Grid copy() {
-        return new Grid(this);
     }
 
     Cell get(int i, int j) {
@@ -63,7 +67,11 @@ public class Grid {
         return status;
     }
 
-    boolean isGameOver() {
+    public String getStatusAsString() {
+        return status.toString();
+    }
+
+    public boolean isGameOver() {
         return !(getStatus() == Status.X_TURN || getStatus() == Status.O_TURN);
     }
 
@@ -75,15 +83,14 @@ public class Grid {
     }
 
     public void move(int r, int c) {
-        if (isGameOver()) {
-            return;
+        if (isGameOver() || get(r, c) != Cell.EMPTY) {
+            throw new IllegalStateException("Moving to already written cell");
         }
 
         Cell cellToPlace = oTurn() ? Cell.O : Cell.X;
         board[r][c] = cellToPlace;
-        moves.push(new Move(r, c, oTurn() ? Move.Player.O : Move.Player.X));
+        moves.push(new Move(r, c, oTurn() ? Move.Player.O : Move.Player.X, 0));
         status = updateStatus(r, c);
-        System.out.println(status);
         boardProperty[r][c].set(cellToPlace.toString());
     }
 
@@ -116,12 +123,18 @@ public class Grid {
         return oTurn() ? Status.X_TURN : Status.O_TURN;
     }
 
-    private boolean oTurn() {
-        return status == Status.O_TURN;
+    boolean oTurn() {
+        return status.equals(Status.O_TURN);
     }
 
     public ReadOnlyStringProperty getCellDisplay(int r, int c) {
         return boardProperty[r][c];
+    }
+
+    public int[] getBestMove() {
+        final Move bestMove = Minimax.getBestMove(this);
+
+        return new int[]{bestMove.r(), bestMove.c()};
     }
 
     @Override

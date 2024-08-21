@@ -2,9 +2,8 @@ package org.game.tictactoe;
 
 import javafx.fxml.FXML;
 import javafx.scene.Node;
-import javafx.scene.control.Button;
 import javafx.scene.control.Label;
-import javafx.scene.control.TextField;
+import javafx.scene.control.ToggleButton;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.GridPane;
@@ -18,12 +17,18 @@ public class TicTacToeController {
     private static final int CELL_SIZE = 50;
 
     @FXML
+    private Label gameLabel;
+    @FXML
+    private ToggleButton botEnabled;
+    @FXML
     private GridPane gameBoard;
 
     private Grid grid;
 
     @FXML
     private void initialize() {
+        botEnabled.selectedProperty().addListener((observable, oldValue, newValue) ->
+                botEnabled.setText("Bot " + (newValue ? "ON" : "OFF")));
         grid = new Grid();
 
         gameBoard.setGridLinesVisible(true);
@@ -50,9 +55,51 @@ public class TicTacToeController {
         }
     }
 
+    @FXML
+    private void reset() {
+        grid.reset();
+        gameBoard.getChildrenUnmodifiable().forEach(cell -> cell.setMouseTransparent(false));
+        gameLabel.setText("Welcome to TicTacToe");
+
+        if (botEnabled.isSelected() && Math.random() < 0.5) {
+            clickAITile();
+        }
+    }
+
+    @FXML
+    private void exit() {
+        System.exit(0);
+    }
+
     private void clickTile(MouseEvent event, int r, int c) {
-        Node node = (Node) event.getTarget();
+        final Node node = (Node) event.getTarget();
         node.setMouseTransparent(true);
         grid.move(r, c);
+
+        if (!grid.isGameOver()) {
+            if (botEnabled.isSelected()) {
+                clickAITile();
+            }
+        } else {
+            gameOver();
+        }
+    }
+
+    private void clickAITile() {
+        final int[] bestMove = grid.getBestMove();
+        grid.move(bestMove[0], bestMove[1]);
+
+        // Adding 1 since the gridlines are the first index
+        Node node = gameBoard.getChildrenUnmodifiable().get(1 + bestMove[0] * 3 + bestMove[1]);
+        node.setMouseTransparent(true);
+
+        if (grid.isGameOver()) {
+            gameOver();
+        }
+    }
+
+    private void gameOver() {
+        gameBoard.getChildrenUnmodifiable().forEach(cell -> cell.setMouseTransparent(true));
+        gameLabel.setText(grid.getStatusAsString());
     }
 }
